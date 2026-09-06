@@ -47,7 +47,8 @@ session bus. It takes ~15–20s and uses a short `leaseSeconds` (8) plus a disti
   deprecated `session.idle` event.
 - Each inhibitor runs `gnome-session-inhibit --app-id opencode --reason <reason> --inhibit
   <actions> sleep <leaseSeconds>` (default lease 120s) and is renewed every lease/2 while busy;
-  when idle, renewals stop and the lease expires by itself — this is the crash-safety mechanism.
+  when all sessions go idle the inhibitor is killed immediately. The finite lease is the
+  crash-safety mechanism while busy: if opencode dies mid-run, the inhibitor exits on its own.
 - GNOME ≥3.32 CLI takes the command positionally; older builds require `--command`. Detection is
   via `gnome-session-inhibit --help`.
 - Options come from the config tuple form (actions/reason/leaseSeconds); env overrides:
@@ -55,5 +56,6 @@ session bus. It takes ~15–20s and uses a short `leaseSeconds` (8) plus a disti
 
 ## Repo state
 
-Git repo is freshly initialized with **no commits** and **no `.gitignore`** — `node_modules/` and
-`bun.lock` are untracked. Do not commit `node_modules/` unless a `.gitignore` is added first.
+Git repo has one commit (`de35b8c`) and a `.gitignore` covering `node_modules/`. `bun.lock` is
+untracked. Plugin changes only reach the running build after a commit here **and**
+`nix flake lock --update-input suspend-inhibit` + `nixos-rebuild switch` in the dotfiles repo.

@@ -9,9 +9,10 @@
  * - Every inhibitor process lives for a finite "lease" (default 120s) by
  *   running `sleep <lease>` under gnome-session-inhibit. A timer renews the
  *   process every lease/2 seconds while a session is busy.
- * - When all sessions go idle, renewals stop and the last inhibitor exits
- *   on its own within one lease — so the machine can suspend again even if
- *   opencode crashes or is killed without a clean shutdown.
+ * - When all sessions go idle, the inhibitor is killed immediately. The
+ *   finite lease remains the crash-safety bound while a session is busy:
+ *   if opencode crashes or is killed without a clean shutdown, the last
+ *   inhibitor still exits on its own within one lease.
  * - If the runtime calls the plugin `dispose` hook, the inhibitor is killed
  *   immediately instead.
  *
@@ -230,7 +231,13 @@ export default async (input: PluginInput, options?: PluginOptions): Promise<Hook
       } else {
         return
       }
-      if (active.size > 0) await ensureInhibitor()
+      if (active.size > 0) {
+        await ensureInhibitor()
+      } else if (job && !job.dead) {
+        // All sessions are idle: drop the inhibitor now instead of waiting
+        // out the lease. The lease still bounds a crash while busy.
+        killJob(job)
+      }
     } catch {
       // event hooks must never throw
     }
